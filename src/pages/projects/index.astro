@@ -1,0 +1,44 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageIntro from '../../components/PageIntro.astro';
+import Icon from '../../components/Icon.astro';
+---
+
+<BaseLayout title="Projects" description="Research directions and future projects by Sakarrin.">
+  <PageIntro
+    eyebrow="Projects"
+    title="Research directions in formation."
+    description="This space will connect day-to-day work with the larger questions behind each project—from the first idea to a finished result."
+  />
+
+  <section class="content-section shell">
+    <div class="project-list">
+      <article class="project-card">
+        <div class="project-number">01</div>
+        <div class="project-main">
+          <div class="project-meta"><span class="label">Research direction</span><span>Exploration</span></div>
+          <h2>Intelligent Storage Systems</h2>
+          <p>Investigating how storage systems can become more adaptive and efficient for emerging data and AI workloads.</p>
+          <div class="tag-row"><span>Storage Systems</span><span>Systems Research</span><span>Efficiency</span></div>
+        </div>
+        <span class="project-icon"><Icon name="layers" size={30} /></span>
+      </article>
+
+      <article class="project-card">
+        <div class="project-number">02</div>
+        <div class="project-main">
+          <div class="project-meta"><span class="label">Research direction</span><span>Exploration</span></div>
+          <h2>Efficient Model Inference</h2>
+          <p>Exploring systems and optimization techniques that make modern models faster and more practical to run.</p>
+          <div class="tag-row"><span>Model Inference</span><span>Optimization</span><span>AI Systems</span></div>
+        </div>
+        <span class="project-icon"><Icon name="spark" size={30} /></span>
+      </article>
+    </div>
+
+    <div class="quiet-note">
+      <span>Project status</span>
+      <p>Specific projects will be added here once their scope, goals, and public materials are ready.</p>
+    </div>
+  </section>
+</BaseLayout>

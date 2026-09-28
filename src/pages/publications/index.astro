@@ -1,0 +1,26 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageIntro from '../../components/PageIntro.astro';
+import EmptyState from '../../components/EmptyState.astro';
+---
+
+<BaseLayout title="Publications" description="Publications and academic outputs by Sakarrin.">
+  <PageIntro
+    eyebrow="Publications"
+    title="Work made public."
+    description="Papers, preprints, talks, and other research outputs will be collected here with links to code and supporting materials."
+  />
+
+  <section class="content-section shell narrow-content">
+    <div class="publication-summary">
+      <div><strong>0</strong><span>Publications</span></div>
+      <div><strong>0</strong><span>Preprints</span></div>
+      <div><strong>0</strong><span>Talks</span></div>
+    </div>
+    <EmptyState
+      icon="paper"
+      title="A place for future work"
+      description="Published papers, preprints, citations, code, and supplementary material will appear here when available."
+    />
+  </section>
+</BaseLayout>

@@ -1,0 +1,13 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Icon from '../components/Icon.astro';
+---
+
+<BaseLayout title="Page not found">
+  <section class="not-found shell">
+    <p class="error-code">404</p>
+    <h1>This page hasn’t been written yet.</h1>
+    <p>The link may be outdated, or the page may have moved.</p>
+    <a class="button button-primary" href="/">Return home <Icon name="arrow" size={17} /></a>
+  </section>
+</BaseLayout>

@@ -1,0 +1,42 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageIntro from '../../components/PageIntro.astro';
+import EmptyState from '../../components/EmptyState.astro';
+---
+
+<BaseLayout title="Research Log" description="A chronological record of Sakarrin's research progress, experiments, and reflections.">
+  <PageIntro
+    eyebrow="Research log"
+    title="Progress, one entry at a time."
+    description="A chronological record of experiments, reading, open questions, obstacles, and the small decisions that move research forward."
+  />
+
+  <section class="content-section shell narrow-content">
+    <div class="filter-row" aria-label="Log filters">
+      <span class="filter-label">Browse by</span>
+      <span class="filter-chip active">All entries</span>
+      <span class="filter-chip">Weekly reviews</span>
+      <span class="filter-chip">Experiments</span>
+      <span class="filter-chip">Reading</span>
+    </div>
+
+    <EmptyState
+      icon="calendar"
+      title="No public entries yet"
+      description="The log will begin when the first piece of graduate research work is ready to be documented."
+    />
+
+    <aside class="format-card">
+      <div>
+        <p class="eyebrow">Entry structure</p>
+        <h2>A simple format for honest progress</h2>
+      </div>
+      <ol class="format-list">
+        <li><span>01</span><div><strong>Done</strong><p>What moved forward?</p></div></li>
+        <li><span>02</span><div><strong>Learned</strong><p>What became clearer?</p></div></li>
+        <li><span>03</span><div><strong>Blocked</strong><p>What still needs an answer?</p></div></li>
+        <li><span>04</span><div><strong>Next</strong><p>What is the smallest useful step?</p></div></li>
+      </ol>
+    </aside>
+  </section>
+</BaseLayout>

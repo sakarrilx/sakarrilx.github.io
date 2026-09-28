@@ -1,0 +1,59 @@
+---
+import Icon from './Icon.astro';
+import { navigation, site } from '../data/site';
+
+const pathname = Astro.url.pathname;
+const isActive = (href: string) => href === '/' ? pathname === '/' : pathname.startsWith(href);
+---
+
+<header class="site-header">
+  <div class="header-inner shell">
+    <a class="brand" href="/" aria-label={`${site.name} home`}>
+      <span class="brand-mark" aria-hidden="true">S</span>
+      <span>{site.name}</span>
+    </a>
+
+    <nav class="primary-nav" aria-label="Primary navigation">
+      {navigation.map((item) => (
+        <a href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>
+          {item.label}
+        </a>
+      ))}
+    </nav>
+
+    <div class="header-actions">
+      <a
+        class="icon-button github-link"
+        href={`https://github.com/${site.github}`}
+        aria-label="Visit GitHub profile"
+        target="_blank"
+        rel="noreferrer"
+      >
+        <Icon name="github" size={19} />
+      </a>
+      <button class="icon-button theme-toggle" type="button" aria-label="Switch color theme" title="Switch color theme">
+        <span class="theme-icon theme-icon-sun"><Icon name="sun" size={19} /></span>
+        <span class="theme-icon theme-icon-moon"><Icon name="moon" size={19} /></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<script>
+  const button = document.querySelector<HTMLButtonElement>('.theme-toggle');
+
+  const syncLabel = () => {
+    if (!button) return;
+    const dark = document.documentElement.dataset.theme === 'dark';
+    button.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+    button.title = dark ? 'Switch to light theme' : 'Switch to dark theme';
+  };
+
+  syncLabel();
+  button?.addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem('theme', next);
+    syncLabel();
+  });
+</script>

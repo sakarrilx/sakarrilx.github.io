@@ -1,0 +1,46 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageIntro from '../../components/PageIntro.astro';
+import Icon from '../../components/Icon.astro';
+---
+
+<BaseLayout title="Notes" description="Technical notes and a growing knowledge base by Sakarrin.">
+  <PageIntro
+    eyebrow="Knowledge notes"
+    title="Learn once. Write it down."
+    description="A growing collection of concepts, methods, paper notes, and practical lessons—written to make future work clearer."
+  />
+
+  <section class="content-section shell">
+    <div class="note-categories">
+      <article class="note-category">
+        <span class="card-icon"><Icon name="layers" /></span>
+        <h2>Storage Systems</h2>
+        <p>Architecture, data paths, performance, and intelligent storage techniques.</p>
+        <span class="entry-count">0 notes</span>
+      </article>
+      <article class="note-category">
+        <span class="card-icon"><Icon name="spark" /></span>
+        <h2>Model Inference</h2>
+        <p>Serving systems, efficiency, optimization, and deployment concepts.</p>
+        <span class="entry-count">0 notes</span>
+      </article>
+      <article class="note-category">
+        <span class="card-icon"><Icon name="paper" /></span>
+        <h2>Paper Reading</h2>
+        <p>Structured summaries, questions, and connections between research papers.</p>
+        <span class="entry-count">0 notes</span>
+      </article>
+      <article class="note-category">
+        <span class="card-icon"><Icon name="code" /></span>
+        <h2>Tools & Practice</h2>
+        <p>Programming, experiments, reproducibility, and research workflow.</p>
+        <span class="entry-count">0 notes</span>
+      </article>
+    </div>
+
+    <div class="empty-inline">
+      <p><strong>The notebook is ready.</strong> The first public note will appear here.</p>
+    </div>
+  </section>
+</BaseLayout>

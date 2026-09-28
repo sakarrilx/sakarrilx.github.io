@@ -1,0 +1,68 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageIntro from '../../components/PageIntro.astro';
+import Icon from '../../components/Icon.astro';
+import { site } from '../../data/site';
+---
+
+<BaseLayout title="About" description="About Sakarrin, an incoming computer science graduate student at Xiamen University.">
+  <PageIntro
+    eyebrow="About"
+    title="Curious about systems. Serious about progress."
+    description="I am an incoming graduate student in Computer Science and Technology at Xiamen University, with research interests in intelligent storage and model inference."
+  />
+
+  <section class="content-section shell about-grid">
+    <div class="about-main">
+      <div class="prose-block">
+        <p class="lead">
+          Hello, I’m <strong>{site.name}</strong> — also known as {site.legalName}. I am preparing to begin graduate study at {site.university}.
+        </p>
+        <p>
+          My interests center on the systems behind modern computing: how data is stored intelligently, how models run efficiently,
+          and how careful engineering can turn ambitious ideas into dependable tools.
+        </p>
+        <p>
+          This website is both a public academic profile and a working notebook. It will grow alongside my research, preserving not only finished outcomes but also the questions, experiments, and lessons that lead to them.
+        </p>
+      </div>
+
+      <div class="timeline">
+        <h2>Academic path</h2>
+        <div class="timeline-item">
+          <span class="timeline-dot"></span>
+          <div class="timeline-date">Now</div>
+          <div>
+            <h3>Preparing for graduate study</h3>
+            <p>Building research foundations and exploring questions in intelligent storage and model inference.</p>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-dot"></span>
+          <div class="timeline-date">Next</div>
+          <div>
+            <h3>{site.university}</h3>
+            <p>{site.program} · Incoming M.Sc. Student</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="about-sidebar">
+      <div class="about-profile">
+        <div class="avatar avatar-large" aria-hidden="true">S</div>
+        <h2>{site.name}</h2>
+        <p>{site.role}</p>
+        <dl>
+          <div><dt>Institution</dt><dd>{site.university}</dd></div>
+          <div><dt>Program</dt><dd>{site.program}</dd></div>
+          <div><dt>Interests</dt><dd>Intelligent Storage<br />Model Inference</dd></div>
+        </dl>
+        <a class="button button-secondary full-width" href={`https://github.com/${site.github}`} target="_blank" rel="noreferrer">
+          <Icon name="github" size={17} />GitHub profile
+        </a>
+      </div>
+      <blockquote class="quote-card">“{site.tagline}”</blockquote>
+    </aside>
+  </section>
+</BaseLayout>

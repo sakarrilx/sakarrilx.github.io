@@ -1,0 +1,768 @@
+<div class="cat-widget" data-cat-widget>
+  <div class="cat-bubble" data-cat-bubble aria-hidden="true">
+    <span>哈！</span>
+  </div>
+  <span class="cat-cooldown" aria-hidden="true"></span>
+
+  <button
+    class="cat-character"
+    data-cat-character
+    type="button"
+    aria-label="Make the round-headed cat hiss"
+    aria-haspopup="menu"
+  >
+    <img
+      class="cat-image cat-image-idle"
+      src="/assets/cat-idle.webp"
+      alt=""
+      width="512"
+      height="512"
+      draggable="false"
+      decoding="async"
+    />
+    <img
+      class="cat-image cat-image-hiss"
+      src="/assets/cat-hiss.webp"
+      alt=""
+      width="512"
+      height="512"
+      draggable="false"
+      decoding="async"
+    />
+  </button>
+
+  <audio data-cat-audio src="/assets/voice-0.mp3" preload="auto" hidden></audio>
+  <audio data-cat-audio src="/assets/voice-1.mp3" preload="auto" hidden></audio>
+  <audio data-cat-audio src="/assets/voice-2.mp3" preload="auto" hidden></audio>
+  <audio data-cat-audio src="/assets/voice-3.mp3" preload="auto" hidden></audio>
+  <audio data-cat-audio src="/assets/voice-4.mp3" preload="auto" hidden></audio>
+
+  <div class="cat-menu" data-cat-menu role="menu" aria-label="Cat options" hidden>
+    <p>Round-head options</p>
+    <button type="button" role="menuitem" data-cat-sound>Mute hiss</button>
+    <button type="button" role="menuitem" data-cat-hide>Hide cat</button>
+  </div>
+
+  <button class="cat-reveal" data-cat-reveal type="button" aria-label="Show the round-headed cat" hidden>
+    <span class="cat-reveal-avatar" aria-hidden="true">
+      <img src="/assets/cat-idle.webp" alt="" width="512" height="512" />
+    </span>
+    <span>Show cat</span>
+  </button>
+
+  <span class="sr-only" data-cat-status aria-live="polite"></span>
+</div>
+
+<script>
+  const widget = document.querySelector<HTMLElement>('[data-cat-widget]');
+
+  if (widget) {
+    const character = widget.querySelector<HTMLButtonElement>('[data-cat-character]');
+    const bubble = widget.querySelector<HTMLElement>('[data-cat-bubble]');
+    const menu = widget.querySelector<HTMLElement>('[data-cat-menu]');
+    const soundButton = widget.querySelector<HTMLButtonElement>('[data-cat-sound]');
+    const hideButton = widget.querySelector<HTMLButtonElement>('[data-cat-hide]');
+    const revealButton = widget.querySelector<HTMLButtonElement>('[data-cat-reveal]');
+    const status = widget.querySelector<HTMLElement>('[data-cat-status]');
+    const audioClips = Array.from(widget.querySelectorAll<HTMLAudioElement>('[data-cat-audio]'));
+
+    const cooldownMs = 3000;
+    const silentReactionMs = 1500;
+    const hissVolume = 0.45;
+    const dragThreshold = 6;
+    const reactionDistance = 380;
+    const positionKey = 'round-cat-position';
+    let reactionTimer: number | undefined;
+    let cooldownTimer: number | undefined;
+    let activeAudioFinish: (() => void) | undefined;
+    let reactionToken = 0;
+    let lastAudioIndex = Math.floor(Math.random() * Math.max(audioClips.length, 1));
+    let interactionLocked = false;
+    let menuOpen = false;
+    let suppressNextClick = false;
+    let mouseReactionFrame: number | undefined;
+    let lastMousePosition: { x: number; y: number } | null = null;
+    let dragState: {
+      pointerId: number;
+      startX: number;
+      startY: number;
+      originLeft: number;
+      originTop: number;
+      moved: boolean;
+    } | null = null;
+    let soundEnabled = localStorage.getItem('round-cat-sound') !== 'muted';
+
+    for (const audio of audioClips) audio.volume = hissVolume;
+
+    const clamp = (value: number, minimum: number, maximum: number) =>
+      Math.min(Math.max(value, minimum), maximum);
+
+    const resetMouseReaction = () => {
+      widget.classList.remove('is-mouse-aware');
+      widget.style.setProperty('--cat-alert', '0');
+      widget.style.setProperty('--cat-react-x', '0px');
+      widget.style.setProperty('--cat-react-y', '0px');
+      widget.style.setProperty('--cat-react-tilt', '0deg');
+    };
+
+    const updateMouseReaction = () => {
+      mouseReactionFrame = undefined;
+      if (
+        !character ||
+        !lastMousePosition ||
+        widget.dataset.hidden === 'true' ||
+        widget.classList.contains('is-dragging') ||
+        widget.classList.contains('is-hissing') ||
+        widget.classList.contains('is-cooling-down')
+      ) {
+        resetMouseReaction();
+        return;
+      }
+
+      const rect = character.getBoundingClientRect();
+      const centerX = rect.left + rect.width * 0.5;
+      const centerY = rect.top + rect.height * 0.46;
+      const deltaX = lastMousePosition.x - centerX;
+      const deltaY = lastMousePosition.y - centerY;
+      const distance = Math.hypot(deltaX, deltaY);
+      const proximity = clamp(1 - distance / reactionDistance, 0, 1);
+      const alert = proximity * proximity * (3 - 2 * proximity);
+
+      if (alert < 0.015) {
+        resetMouseReaction();
+        return;
+      }
+
+      const directionX = distance > 0 ? deltaX / distance : 0;
+      const directionY = distance > 0 ? deltaY / distance : 0;
+      widget.classList.add('is-mouse-aware');
+      widget.style.setProperty('--cat-alert', alert.toFixed(3));
+      widget.style.setProperty('--cat-react-x', `${(-directionX * alert * 8).toFixed(2)}px`);
+      widget.style.setProperty('--cat-react-y', `${(-directionY * alert * 4).toFixed(2)}px`);
+      widget.style.setProperty('--cat-react-tilt', `${(-directionX * alert * 3.6).toFixed(2)}deg`);
+    };
+
+    const scheduleMouseReaction = () => {
+      if (mouseReactionFrame !== undefined) return;
+      mouseReactionFrame = window.requestAnimationFrame(updateMouseReaction);
+    };
+
+    const setWidgetPosition = (left: number, top: number) => {
+      const maxLeft = Math.max(0, window.innerWidth - widget.offsetWidth);
+      const maxTop = Math.max(0, window.innerHeight - widget.offsetHeight);
+      widget.style.left = `${clamp(left, 0, maxLeft)}px`;
+      widget.style.top = `${clamp(top, 0, maxTop)}px`;
+      widget.style.right = 'auto';
+      widget.style.bottom = 'auto';
+    };
+
+    const saveWidgetPosition = () => {
+      const rect = widget.getBoundingClientRect();
+      const maxLeft = Math.max(1, window.innerWidth - rect.width);
+      const maxTop = Math.max(1, window.innerHeight - rect.height);
+      localStorage.setItem(
+        positionKey,
+        JSON.stringify({ x: clamp(rect.left / maxLeft, 0, 1), y: clamp(rect.top / maxTop, 0, 1) }),
+      );
+    };
+
+    const restoreWidgetPosition = () => {
+      try {
+        const savedPosition = JSON.parse(localStorage.getItem(positionKey) ?? 'null');
+        if (typeof savedPosition?.x !== 'number' || typeof savedPosition?.y !== 'number') return;
+        const maxLeft = Math.max(0, window.innerWidth - widget.offsetWidth);
+        const maxTop = Math.max(0, window.innerHeight - widget.offsetHeight);
+        setWidgetPosition(savedPosition.x * maxLeft, savedPosition.y * maxTop);
+      } catch {
+        localStorage.removeItem(positionKey);
+      }
+    };
+
+    const syncSoundLabel = () => {
+      if (soundButton) soundButton.textContent = soundEnabled ? 'Mute hiss' : 'Enable hiss';
+    };
+
+    const setLocked = (locked: boolean, coolingDown = false) => {
+      interactionLocked = locked;
+      widget.classList.toggle('is-cooling-down', locked && coolingDown);
+      character?.setAttribute('aria-disabled', String(locked));
+      if (character) {
+        character.title = locked
+          ? coolingDown ? 'The cat is calming down' : 'The cat is hissing'
+          : 'Click to make the cat hiss';
+      }
+    };
+
+    const closeMenu = () => {
+      if (!menu) return;
+      menu.hidden = true;
+      menuOpen = false;
+      character?.setAttribute('aria-expanded', 'false');
+    };
+
+    const openMenu = () => {
+      if (!menu || !character) return;
+      menu.hidden = false;
+      menuOpen = true;
+      character.setAttribute('aria-expanded', 'true');
+      const widgetRect = widget.getBoundingClientRect();
+      const menuWidth = menu.offsetWidth;
+      const menuHeight = menu.offsetHeight;
+      const left = clamp(widgetRect.right - menuWidth, 8, window.innerWidth - menuWidth - 8);
+      const preferredTop = widgetRect.top - menuHeight + 24;
+      const fallbackTop = widgetRect.bottom - 24;
+      const top = clamp(
+        preferredTop >= 8 ? preferredTop : fallbackTop,
+        8,
+        window.innerHeight - menuHeight - 8,
+      );
+      menu.style.left = `${left - widgetRect.left}px`;
+      menu.style.top = `${top - widgetRect.top}px`;
+      menu.querySelector<HTMLButtonElement>('button')?.focus();
+    };
+
+    const stopAudio = () => {
+      for (const audio of audioClips) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+      activeAudioFinish?.();
+      activeAudioFinish = undefined;
+    };
+
+    const playHissAudio = () => new Promise<void>((resolve) => {
+      if (!soundEnabled || audioClips.length === 0) {
+        reactionTimer = window.setTimeout(resolve, silentReactionMs);
+        return;
+      }
+
+      lastAudioIndex = (lastAudioIndex + 1) % audioClips.length;
+      const audio = audioClips[lastAudioIndex];
+      audio.currentTime = 0;
+
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        audio.removeEventListener('ended', finish);
+        audio.removeEventListener('error', finish);
+        if (activeAudioFinish === finish) activeAudioFinish = undefined;
+        resolve();
+      };
+
+      activeAudioFinish = finish;
+      audio.addEventListener('ended', finish, { once: true });
+      audio.addEventListener('error', finish, { once: true });
+      audio.play().catch(() => {
+        reactionTimer = window.setTimeout(finish, silentReactionMs);
+      });
+    });
+
+    const cancelReaction = () => {
+      reactionToken += 1;
+      window.clearTimeout(reactionTimer);
+      window.clearTimeout(cooldownTimer);
+      stopAudio();
+      widget.classList.remove('is-hissing', 'is-cooling-down');
+      bubble?.setAttribute('aria-hidden', 'true');
+      setLocked(false);
+    };
+
+    const setHidden = (hidden: boolean) => {
+      cancelReaction();
+      widget.dataset.hidden = String(hidden);
+      if (character) character.hidden = hidden;
+      if (revealButton) revealButton.hidden = !hidden;
+      sessionStorage.setItem('round-cat-hidden', hidden ? 'true' : 'false');
+      closeMenu();
+    };
+
+    const hiss = async () => {
+      if (!character || widget.dataset.hidden === 'true' || interactionLocked) return;
+      const token = ++reactionToken;
+      closeMenu();
+      setLocked(true);
+      widget.classList.add('is-hissing');
+      bubble?.setAttribute('aria-hidden', 'false');
+      if (status) status.textContent = 'The cat arches its back and hisses.';
+      await playHissAudio();
+
+      if (token !== reactionToken) return;
+      widget.classList.remove('is-hissing');
+      bubble?.setAttribute('aria-hidden', 'true');
+      setLocked(true, true);
+      if (status) status.textContent = 'The cat is calming down.';
+
+      cooldownTimer = window.setTimeout(() => {
+        if (token !== reactionToken) return;
+        setLocked(false);
+        if (status) status.textContent = 'The cat is ready to hiss again.';
+      }, cooldownMs);
+    };
+
+    syncSoundLabel();
+    setHidden(sessionStorage.getItem('round-cat-hidden') === 'true');
+    window.requestAnimationFrame(restoreWidgetPosition);
+
+    character?.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
+      resetMouseReaction();
+      closeMenu();
+      const rect = widget.getBoundingClientRect();
+      dragState = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        originLeft: rect.left,
+        originTop: rect.top,
+        moved: false,
+      };
+      character.setPointerCapture(event.pointerId);
+    });
+    character?.addEventListener('pointermove', (event) => {
+      if (!dragState || event.pointerId !== dragState.pointerId) return;
+      const deltaX = event.clientX - dragState.startX;
+      const deltaY = event.clientY - dragState.startY;
+      if (!dragState.moved && Math.hypot(deltaX, deltaY) < dragThreshold) return;
+      dragState.moved = true;
+      widget.classList.add('is-dragging');
+      setWidgetPosition(dragState.originLeft + deltaX, dragState.originTop + deltaY);
+    });
+
+    const finishDrag = (event: PointerEvent) => {
+      if (!dragState || event.pointerId !== dragState.pointerId) return;
+      if (character?.hasPointerCapture(event.pointerId)) character.releasePointerCapture(event.pointerId);
+      if (dragState.moved) {
+        suppressNextClick = true;
+        saveWidgetPosition();
+        window.setTimeout(() => {
+          suppressNextClick = false;
+        }, 0);
+      }
+      widget.classList.remove('is-dragging');
+      dragState = null;
+    };
+
+    character?.addEventListener('pointerup', finishDrag);
+    character?.addEventListener('pointercancel', finishDrag);
+    character?.addEventListener('click', (event) => {
+      if (suppressNextClick) {
+        event.preventDefault();
+        return;
+      }
+      void hiss();
+    });
+    character?.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
+      menuOpen ? closeMenu() : openMenu();
+    });
+    character?.addEventListener('keydown', (event) => {
+      if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+        event.preventDefault();
+        openMenu();
+      }
+    });
+    soundButton?.addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      localStorage.setItem('round-cat-sound', soundEnabled ? 'on' : 'muted');
+      syncSoundLabel();
+      closeMenu();
+      character?.focus();
+    });
+    hideButton?.addEventListener('click', () => setHidden(true));
+    revealButton?.addEventListener('click', () => {
+      setHidden(false);
+      character?.focus();
+    });
+    document.addEventListener('pointerdown', (event) => {
+      if (
+        menuOpen &&
+        event.target instanceof Node &&
+        !menu?.contains(event.target) &&
+        !character?.contains(event.target)
+      ) closeMenu();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && menuOpen) {
+        closeMenu();
+        character?.focus();
+      }
+    });
+    document.addEventListener('pointermove', (event) => {
+      if (event.pointerType && event.pointerType !== 'mouse') return;
+      lastMousePosition = { x: event.clientX, y: event.clientY };
+      scheduleMouseReaction();
+    }, { passive: true });
+    document.addEventListener('pointerleave', () => {
+      lastMousePosition = null;
+      resetMouseReaction();
+    });
+    window.addEventListener('blur', () => {
+      lastMousePosition = null;
+      resetMouseReaction();
+    });
+    window.addEventListener('resize', () => {
+      restoreWidgetPosition();
+      scheduleMouseReaction();
+    });
+    window.addEventListener('scroll', scheduleMouseReaction, { passive: true });
+  }
+</script>
+
+<style>
+  .cat-widget {
+    --cat-alert: 0;
+    --cat-react-x: 0px;
+    --cat-react-y: 0px;
+    --cat-react-tilt: 0deg;
+    position: fixed;
+    z-index: 18;
+    right: 10px;
+    bottom: -12px;
+    width: clamp(190px, 20vw, 250px);
+    aspect-ratio: 1;
+    filter: drop-shadow(0 12px 18px rgba(31, 35, 40, 0.2));
+    user-select: none;
+  }
+
+  .cat-widget [hidden] {
+    display: none !important;
+  }
+
+  .cat-widget[data-hidden='true'] {
+    width: 0;
+    height: 0;
+    aspect-ratio: auto;
+    filter: none;
+    pointer-events: none;
+  }
+
+  .cat-widget[data-hidden='true'] .cat-reveal {
+    pointer-events: auto;
+  }
+
+  .cat-character {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    cursor: grab;
+    filter: saturate(0.97);
+    touch-action: none;
+  }
+
+  .cat-character:active {
+    cursor: grabbing;
+  }
+
+  .cat-character:focus-visible {
+    border-radius: 45% 45% 18% 18%;
+    outline-offset: -8px;
+  }
+
+  .cat-image {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transform-origin: 52% 82%;
+    pointer-events: none;
+  }
+
+  .cat-image-idle {
+    opacity: 1;
+    transform: scale(0.94);
+    transition: opacity 90ms ease, transform 180ms ease;
+  }
+
+  .cat-image-hiss {
+    opacity: 0;
+    transform: scale(0.76) rotate(-2deg);
+  }
+
+  .cat-character:hover .cat-image-idle {
+    transform: scale(0.97) translateY(-2px);
+  }
+
+  .cat-widget.is-mouse-aware:not(.is-hissing):not(.is-cooling-down):not(.is-dragging) .cat-image-idle {
+    filter:
+      saturate(calc(1 + var(--cat-alert) * 0.12))
+      brightness(calc(1 + var(--cat-alert) * 0.035));
+    transform:
+      translate3d(var(--cat-react-x), var(--cat-react-y), 0)
+      rotate(var(--cat-react-tilt))
+      scale(calc(0.94 + var(--cat-alert) * 0.045));
+    transition: filter 150ms ease-out, transform 130ms ease-out;
+  }
+
+  .is-cooling-down .cat-character {
+    cursor: grab;
+  }
+
+  .cat-widget.is-dragging {
+    z-index: 70;
+    filter: drop-shadow(0 18px 26px rgba(31, 35, 40, 0.28));
+  }
+
+  .cat-widget.is-dragging .cat-character {
+    cursor: grabbing;
+    animation: none;
+  }
+
+  .cat-widget:not(.is-hissing):not(.is-cooling-down):not(.is-dragging) .cat-character:not([hidden]) {
+    animation: cat-idle-wander 13s ease-in-out infinite;
+  }
+
+  .cat-cooldown {
+    position: absolute;
+    z-index: 12;
+    top: 7%;
+    right: 12%;
+    display: grid;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    border: 2px solid rgba(148, 163, 184, 0.42);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 4px 14px rgba(31, 35, 40, 0.28);
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.62);
+    transition: opacity 160ms ease, transform 160ms ease;
+  }
+
+  .cat-cooldown::before {
+    display: block;
+    box-sizing: border-box;
+    width: 17px;
+    height: 17px;
+    border: 3px solid rgba(9, 105, 218, 0.2);
+    border-top-color: var(--accent);
+    border-radius: inherit;
+    content: '';
+    animation: cat-cooldown-spin 760ms linear infinite;
+  }
+
+  .cat-widget.is-cooling-down .cat-cooldown {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .is-hissing .cat-image-idle {
+    opacity: 0;
+    transform: scale(0.82) translateY(10px);
+  }
+
+  .is-hissing .cat-image-hiss {
+    animation: cat-hiss-pop 420ms cubic-bezier(0.2, 0.9, 0.22, 1) both;
+  }
+
+  .cat-bubble {
+    position: absolute;
+    z-index: 3;
+    top: -18px;
+    right: 4px;
+    display: grid;
+    width: 72px;
+    height: 58px;
+    place-items: center;
+    border: 3px solid #1f2328;
+    border-radius: 52% 48% 49% 51%;
+    background: #fff;
+    color: #1f2328;
+    font-family: var(--font-sans);
+    font-size: 27px;
+    font-weight: 900;
+    line-height: 1;
+    opacity: 0;
+    filter: none;
+    transform: scale(0.55) rotate(8deg);
+    transform-origin: left bottom;
+    pointer-events: none;
+  }
+
+  .cat-bubble::after {
+    content: '';
+    position: absolute;
+    right: 42px;
+    bottom: -16px;
+    width: 18px;
+    height: 20px;
+    border-right: 3px solid #1f2328;
+    border-bottom: 3px solid #1f2328;
+    background: #fff;
+    transform: skew(-28deg) rotate(31deg);
+  }
+
+  .cat-bubble span {
+    position: relative;
+    z-index: 1;
+    transform: rotate(-5deg);
+  }
+
+  .is-hissing .cat-bubble {
+    animation: bubble-pop 330ms ease-out both;
+  }
+
+  .cat-menu {
+    position: absolute;
+    z-index: 60;
+    display: grid;
+    min-width: 178px;
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface-raised);
+    box-shadow: var(--shadow);
+    filter: none;
+  }
+
+  .cat-menu p {
+    margin: 0;
+    padding: 7px 10px 5px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .cat-menu button {
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .cat-menu button:hover,
+  .cat-menu button:focus-visible {
+    background: var(--bg-subtle);
+    color: var(--accent);
+    outline: none;
+  }
+
+  .cat-reveal {
+    position: fixed;
+    right: 16px;
+    bottom: 14px;
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface-raised);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: var(--shadow-small);
+    cursor: pointer;
+    filter: none;
+  }
+
+  .cat-reveal:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .cat-reveal-avatar {
+    position: relative;
+    width: 27px;
+    height: 27px;
+    overflow: hidden;
+    flex: 0 0 auto;
+    border: 1px solid rgba(148, 163, 184, 0.42);
+    border-radius: 50%;
+    background: #e2e8f0;
+  }
+
+  .cat-reveal-avatar img {
+    position: absolute;
+    top: 43%;
+    left: 50%;
+    width: 48px;
+    height: 48px;
+    max-width: none;
+    object-fit: contain;
+    transform: translate(-50%, -50%) scale(1.45);
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @keyframes cat-hiss-pop {
+    0% { opacity: 0; transform: scale(0.76) rotate(-2deg); }
+    45% { opacity: 1; transform: scale(1.05) rotate(1deg); }
+    68% { opacity: 1; transform: scale(0.99) rotate(-1deg); }
+    82% { opacity: 1; transform: scale(1.02) rotate(1deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0); }
+  }
+
+  @keyframes bubble-pop {
+    0% { opacity: 0; transform: scale(0.5) rotate(8deg); }
+    58% { opacity: 1; transform: scale(1.13) rotate(-5deg); }
+    78% { opacity: 1; transform: scale(0.96) rotate(1deg); }
+    100% { opacity: 1; transform: scale(1) rotate(-2deg); }
+  }
+
+  @keyframes cat-idle-wander {
+    0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+    20% { transform: translate3d(-5px, -2px, 0) rotate(-0.8deg); }
+    42% { transform: translate3d(7px, 1px, 0) rotate(0.7deg); }
+    64% { transform: translate3d(3px, -5px, 0) rotate(0.25deg); }
+    82% { transform: translate3d(-6px, 2px, 0) rotate(-0.5deg); }
+  }
+
+  @keyframes cat-cooldown-spin {
+    to { transform: rotate(1turn); }
+  }
+
+  @media (max-width: 1040px) {
+    .cat-widget {
+      width: 190px;
+      opacity: 0.96;
+    }
+
+  }
+
+  @media (max-width: 760px) {
+    .cat-widget {
+      width: 150px;
+      opacity: 0.94;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cat-character,
+    .cat-cooldown::before {
+      animation: none !important;
+    }
+
+    .cat-character:hover .cat-image-idle {
+      transform: scale(0.94);
+    }
+
+    .is-hissing .cat-image-hiss,
+    .is-hissing .cat-bubble {
+      animation-duration: 2ms;
+    }
+  }
+</style>
