@@ -76,7 +76,7 @@
     let cooldownTimer: number | undefined;
     let activeAudioFinish: (() => void) | undefined;
     let reactionToken = 0;
-    let lastAudioIndex = Math.floor(Math.random() * Math.max(audioClips.length, 1));
+    let lastAudioIndex = -1;
     let interactionLocked = false;
     let menuOpen = false;
     let suppressNextClick = false;
@@ -236,7 +236,13 @@
         return;
       }
 
-      lastAudioIndex = (lastAudioIndex + 1) % audioClips.length;
+      let nextAudioIndex = Math.floor(Math.random() * audioClips.length);
+      if (audioClips.length > 1) {
+        while (nextAudioIndex === lastAudioIndex) {
+          nextAudioIndex = Math.floor(Math.random() * audioClips.length);
+        }
+      }
+      lastAudioIndex = nextAudioIndex;
       const audio = audioClips[lastAudioIndex];
       audio.currentTime = 0;
 
