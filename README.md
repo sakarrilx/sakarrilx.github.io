@@ -1,6 +1,7 @@
 # Sakarrilx — Academic Homepage
 
 A personal academic website for research logs, projects, knowledge notes, and publications. Built with Astro and prepared for GitHub Pages.
+url: https://sakarrilx.github.io/
 
 ## Local development
 
