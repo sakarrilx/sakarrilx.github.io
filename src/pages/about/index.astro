@@ -57,6 +57,7 @@ import { site } from '../../data/site';
           <div><dt>Institution</dt><dd>{site.university}</dd></div>
           <div><dt>Program</dt><dd>{site.program}</dd></div>
           <div><dt>Interests</dt><dd>Intelligent Storage<br />Model Inference</dd></div>
+          <div><dt>Email</dt><dd><a href={`mailto:${site.email}`}>{site.email}</a></dd></div>
         </dl>
         <a class="button button-secondary full-width" href={`https://github.com/${site.github}`} target="_blank" rel="noreferrer">
           <Icon name="github" size={17} />GitHub profile

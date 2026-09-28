@@ -31,7 +31,7 @@ The static website is generated in `dist/`.
 
 ## Publish on GitHub Pages
 
-1. Create a public repository named `Sakarrin.github.io` under the GitHub account `Sakarrin`.
+1. Create a public repository named `sakarrilx.github.io` under the GitHub account `sakarrilx`.
 2. Push this project to the repository's `main` branch.
 3. Open **Settings → Pages** in the repository.
 4. Set the deployment source to **GitHub Actions**.

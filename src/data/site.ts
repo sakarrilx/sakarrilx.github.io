@@ -7,7 +7,8 @@ export const site = {
   university: 'Xiamen University',
   program: 'Computer Science and Technology',
   role: 'Incoming M.Sc. Student',
-  github: 'Sakarrin',
+  github: 'sakarrilx',
+  email: 'sakarrinwin@gmail.com',
 };
 
 export const navigation = [
