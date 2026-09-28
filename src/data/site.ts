@@ -1,6 +1,6 @@
 export const site = {
   name: 'Sakarrin',
-  legalName: 'Lin Xiao',
+  legalName: 'LX',
   tagline: 'Your time will come.',
   description:
     'The academic homepage and research notebook of Sakarrin, an incoming graduate student in Computer Science and Technology at Xiamen University.',
